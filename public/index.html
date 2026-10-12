@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp Order Bot — simulator</title>
+<meta name="description" content="A WhatsApp bot that takes food orders. Try the whole conversation here — no WhatsApp account needed.">
+<meta property="og:title" content="WhatsApp Order Bot — try the conversation">
+<meta property="og:description" content="Takes food orders over WhatsApp. Deterministic, no LLM. Try it in the simulator.">
+<meta property="og:image" content="https://realaweayomide.github.io/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0b0d12;--card:#141824;--soft:#11141b;--line:#232838;--text:#e8ebf2;--muted:#9aa3b5;
+    --accent:#6ee7b7;--accent-2:#60a5fa;--wa:#005c4b;--wa-in:#1f2c33;
+    --font:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;--display:'Space Grotesk',var(--font)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6;min-height:100vh;
+    background-image:radial-gradient(900px 500px at 85% -10%,rgba(110,231,183,.12),transparent 60%);background-attachment:fixed}
+  .wrap{max-width:940px;margin:0 auto;padding:40px 22px 70px}
+  h1{font-family:var(--display);font-size:clamp(26px,5vw,36px);margin:0 0 8px;font-weight:700}
+  h1 .g{color:var(--accent)}
+  .sub{color:var(--muted);font-size:16.5px;margin:0 0 6px;max-width:640px}
+  .note{color:var(--muted);font-size:13.5px;margin:0 0 24px}
+  .note b{color:var(--accent)}
+
+  .cols{display:grid;grid-template-columns:1fr 340px;gap:18px}
+  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .panel h2{font-family:var(--display);font-size:12px;letter-spacing:1.3px;text-transform:uppercase;
+    color:var(--muted);margin:0 0 12px;font-weight:600}
+
+  .chat{height:430px;overflow-y:auto;background:#0d1418;border:1px solid var(--line);border-radius:12px;
+    padding:14px;display:flex;flex-direction:column;gap:8px}
+  .msg{max-width:78%;padding:9px 13px;border-radius:12px;font-size:14.5px;white-space:pre-wrap;line-height:1.55}
+  .msg.them{background:var(--wa-in);align-self:flex-start;border-bottom-left-radius:3px}
+  .msg.me{background:var(--wa);align-self:flex-end;border-bottom-right-radius:3px}
+  .msg b{font-weight:600}
+  .row{display:flex;gap:9px;margin-top:12px}
+  input{flex:1;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;font-family:var(--font);font-size:14.5px}
+  input:focus{outline:none;border-color:var(--accent)}
+  button{font:inherit;font-size:14px;font-weight:600;padding:11px 17px;border-radius:9px;border:1px solid var(--line);
+    background:var(--card);color:var(--text);cursor:pointer;transition:.15s}
+  button:hover{transform:translateY(-1px);border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#07120d;border-color:transparent}
+  .quick{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+  .q{font-size:12.5px;background:var(--soft);border:1px solid var(--line);border-radius:999px;
+    padding:5px 12px;color:var(--muted);cursor:pointer;transition:.15s}
+  .q:hover{color:var(--text);border-color:var(--accent)}
+  .menu li{font-size:14px;color:var(--muted);margin-bottom:5px;list-style:none}
+  .menu b{color:var(--text)}
+  ul{margin:0;padding:0}
+  .order{background:var(--soft);border:1px solid #1f4538;border-radius:10px;padding:12px;margin-top:10px;font-size:13.5px}
+  .order .ref{font-family:var(--display);color:var(--accent);font-weight:700}
+  .muted{color:var(--muted);font-size:13px}
+  footer{margin-top:30px;text-align:center;color:var(--muted);font-size:13px}
+  footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>WhatsApp <span class="g">Order Bot</span></h1>
+  <p class="sub">A bot that takes food orders over WhatsApp — understands "2 jollof and 1 coke", handles typos, builds a basket, collects delivery details and confirms the order.</p>
+  <p class="note">This is the <b>real conversation engine</b>, running in a simulator so you can try it without a WhatsApp account. <b>No LLM</b> — a customer should get the same answer every time and never be charged for a hallucinated item.</p>
+
+  <div class="cols">
+    <div class="panel">
+      <h2>Chat <span id="mode" class="muted"></span></h2>
+      <div class="chat" id="chat"></div>
+      <div class="row">
+        <input id="in" placeholder="Type a message…" autocomplete="off">
+        <button class="primary" id="send">Send</button>
+        <button id="reset">Reset</button>
+      </div>
+      <div class="quick" id="quick"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Menu</h2>
+      <ul class="menu" id="menu"></ul>
+      <h2 style="margin-top:20px">Orders placed</h2>
+      <div id="orders"><p class="muted">None yet — complete an order to see it here.</p></div>
+    </div>
+  </div>
+
+  <footer>
+    Built by <a href="https://github.com/realaweayomide">Ayomide Awe</a> ·
+    <a href="https://github.com/realaweayomide/whatsapp-order-bot">source on GitHub</a>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id)
+const esc = s => String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))
+const fmt = s => esc(s).replace(/\*([^*\n]+)\*/g,'<b>$1</b>')
+const QUICK = ['hi','2 jollof and 1 coke','chiken suya','water x3','cart','done','pizza','cancel']
+
+function bubble(text, who){
+  const d = document.createElement('div')
+  d.className = 'msg ' + who
+  d.innerHTML = fmt(text)
+  $('chat').appendChild(d)
+  $('chat').scrollTop = $('chat').scrollHeight
+}
+
+async function send(text){
+  const t = (text ?? $('in').value).trim()
+  if(!t) return
+  bubble(t,'me'); $('in').value=''
+  try{
+    const r = await fetch('/api/simulate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:t})})
+    const d = await r.json()
+    bubble(d.reply,'them')
+    if(d.order) loadOrders()
+  }catch(e){ bubble('(connection error: '+e.message+')','them') }
+}
+
+$('send').onclick = () => send()
+$('in').onkeydown = e => { if(e.key==='Enter') send() }
+$('reset').onclick = async () => {
+  await fetch('/api/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+  $('chat').innerHTML=''; bubble('Conversation reset. Say *hi* to begin.','them')
+}
+$('quick').innerHTML = QUICK.map(q=>`<span class="q">${esc(q)}</span>`).join('')
+$('quick').onclick = e => { if(e.target.classList.contains('q')) send(e.target.textContent) }
+
+async function loadOrders(){
+  const list = await (await fetch('/api/orders')).json()
+  $('orders').innerHTML = list.length
+    ? list.slice(-5).reverse().map(o=>`<div class="order"><span class="ref">${esc(o.ref)}</span> — ${esc(o.currency)}${o.total.toLocaleString()}<br>
+       <span class="muted">${esc(o.name)} · ${esc(o.address)}</span></div>`).join('')
+    : '<p class="muted">None yet — complete an order to see it here.</p>'
+}
+
+;(async () => {
+  const cfg = await (await fetch('/api/config')).json()
+  document.title = cfg.businessName + ' — order bot'
+  $('mode').textContent = cfg.live ? '· connected to WhatsApp' : '· simulator'
+  $('menu').innerHTML = cfg.menu.map(m=>`<li><b>${esc(m.name)}</b> — ${esc(cfg.currency)}${m.price.toLocaleString()}</li>`).join('')
+  bubble('Say *hi* to start, or tap one of the suggestions below.','them')
+  loadOrders()
+})()
+</script>
+</body>
+</html>
